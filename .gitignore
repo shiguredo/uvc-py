@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.pyi
+build/
+dist/
+wheels/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+
+# Build directories
+_build/
+_deps/
+
+# OS
+.DS_Store
+
+# Agents
+.claude/
+.codex/
