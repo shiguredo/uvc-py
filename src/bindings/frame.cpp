@@ -18,17 +18,17 @@ Frame::Frame(uint32_t width, uint32_t height, Format format)
 
   size_t channels = 0;
   switch (format) {
-  case Format::RGB:
-    channels = 3;
-    break;
-  case Format::RGBA:
-    channels = 4;
-    break;
-  case Format::MJPEG:
-    channels = 3;
-    break;
-  default:
-    break;
+    case Format::RGB:
+      channels = 3;
+      break;
+    case Format::RGBA:
+      channels = 4;
+      break;
+    case Format::MJPEG:
+      channels = 3;
+      break;
+    default:
+      break;
   }
   if (channels > 0) {
     data_.resize(width * height * channels);
@@ -41,20 +41,22 @@ Frame::~Frame() {
   }
 }
 
-void Frame::set_native_buffer(void *buffer, void (*release_func)(void *)) {
+void Frame::set_native_buffer(void* buffer, void (*release_func)(void*)) {
   native_buffer_ = buffer;
   native_buffer_release_ = release_func;
 }
 
-void Frame::set_nv12_planes(uint8_t *y_plane, size_t y_stride,
-                            uint8_t *uv_plane, size_t uv_stride) {
+void Frame::set_nv12_planes(uint8_t* y_plane,
+                            size_t y_stride,
+                            uint8_t* uv_plane,
+                            size_t uv_stride) {
   y_plane_ = y_plane;
   y_stride_ = y_stride;
   uv_plane_ = uv_plane;
   uv_stride_ = uv_stride;
 }
 
-void Frame::set_packed_plane(uint8_t *plane, size_t stride) {
+void Frame::set_packed_plane(uint8_t* plane, size_t stride) {
   packed_plane_ = plane;
   packed_stride_ = stride;
 }
@@ -109,7 +111,7 @@ nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>> Frame::to_rgb() const {
 
   size_t shape[3] = {height_, width_, 3};
   return nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>>(
-      const_cast<uint8_t *>(data_.data()), 3, shape);
+      const_cast<uint8_t*>(data_.data()), 3, shape);
 }
 
 nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>> Frame::to_rgba() const {
@@ -132,7 +134,7 @@ nb::object Frame::native_buffer() const {
   if (native_buffer_) {
     CVPixelBufferRetain(static_cast<CVPixelBufferRef>(native_buffer_));
     return nb::capsule(native_buffer_, "CVPixelBufferRef",
-                       [](void *p) noexcept {
+                       [](void* p) noexcept {
                          CVPixelBufferRelease(static_cast<CVPixelBufferRef>(p));
                        });
   }
@@ -140,4 +142,4 @@ nb::object Frame::native_buffer() const {
   return nb::none();
 }
 
-} // namespace uvc
+}  // namespace uvc

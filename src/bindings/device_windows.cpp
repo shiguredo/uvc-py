@@ -18,7 +18,8 @@
 namespace uvc {
 
 // COM スマートポインタヘルパー
-template <class T> void SafeRelease(T **ppT) {
+template <class T>
+void SafeRelease(T** ppT) {
   if (*ppT) {
     (*ppT)->Release();
     *ppT = nullptr;
@@ -27,15 +28,15 @@ template <class T> void SafeRelease(T **ppT) {
 
 // Media Foundation 初期化管理
 class MFInitializer {
-public:
-  static MFInitializer &instance() {
+ public:
+  static MFInitializer& instance() {
     static MFInitializer inst;
     return inst;
   }
 
   bool is_initialized() const { return initialized_; }
 
-private:
+ private:
   MFInitializer() {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     if (SUCCEEDED(hr) || hr == RPC_E_CHANGED_MODE) {
@@ -58,8 +59,8 @@ private:
 
 // Windows デバイス実装
 class DeviceWindows : public Device {
-public:
-  DeviceWindows(const DeviceInfo &info, IMFActivate *activate)
+ public:
+  DeviceWindows(const DeviceInfo& info, IMFActivate* activate)
       : info_(info), activate_(activate) {
     if (activate_) {
       activate_->AddRef();
@@ -71,7 +72,9 @@ public:
     SafeRelease(&activate_);
   }
 
-  void start(uint32_t width, uint32_t height, uint32_t fps,
+  void start(uint32_t width,
+             uint32_t height,
+             uint32_t fps,
              Format capture_format,
              std::optional<Format> output_format_opt) override {
     if (running_)
@@ -95,7 +98,7 @@ public:
     }
 
     // SourceReader を作成
-    IMFAttributes *attributes = nullptr;
+    IMFAttributes* attributes = nullptr;
     hr = MFCreateAttributes(&attributes, 1);
     if (FAILED(hr)) {
       cleanup();
@@ -111,7 +114,7 @@ public:
     }
 
     // メディアタイプを設定
-    IMFMediaType *media_type = nullptr;
+    IMFMediaType* media_type = nullptr;
     hr = MFCreateMediaType(&media_type);
     if (FAILED(hr)) {
       cleanup();
@@ -167,7 +170,7 @@ public:
     }
 
     // 実際に設定されたメディアタイプを取得
-    IMFMediaType *current_type = nullptr;
+    IMFMediaType* current_type = nullptr;
     hr = source_reader_->GetCurrentMediaType(
         MF_SOURCE_READER_FIRST_VIDEO_STREAM, &current_type);
     if (SUCCEEDED(hr)) {
@@ -213,7 +216,7 @@ public:
 
   bool is_running() const override { return running_; }
 
-  const DeviceInfo &info() const override { return info_; }
+  const DeviceInfo& info() const override { return info_; }
 
   std::vector<FormatInfo> get_supported_formats() const override {
     std::vector<FormatInfo> formats;
@@ -221,12 +224,12 @@ public:
     if (!activate_)
       return formats;
 
-    IMFMediaSource *source = nullptr;
+    IMFMediaSource* source = nullptr;
     HRESULT hr = activate_->ActivateObject(IID_PPV_ARGS(&source));
     if (FAILED(hr))
       return formats;
 
-    IMFPresentationDescriptor *pd = nullptr;
+    IMFPresentationDescriptor* pd = nullptr;
     hr = source->CreatePresentationDescriptor(&pd);
     if (FAILED(hr)) {
       SafeRelease(&source);
@@ -238,12 +241,12 @@ public:
 
     for (DWORD i = 0; i < stream_count; i++) {
       BOOL selected = FALSE;
-      IMFStreamDescriptor *sd = nullptr;
+      IMFStreamDescriptor* sd = nullptr;
       hr = pd->GetStreamDescriptorByIndex(i, &selected, &sd);
       if (FAILED(hr))
         continue;
 
-      IMFMediaTypeHandler *handler = nullptr;
+      IMFMediaTypeHandler* handler = nullptr;
       hr = sd->GetMediaTypeHandler(&handler);
       if (FAILED(hr)) {
         SafeRelease(&sd);
@@ -254,7 +257,7 @@ public:
       handler->GetMediaTypeCount(&type_count);
 
       for (DWORD j = 0; j < type_count; j++) {
-        IMFMediaType *type = nullptr;
+        IMFMediaType* type = nullptr;
         hr = handler->GetMediaTypeByIndex(j, &type);
         if (FAILED(hr))
           continue;
@@ -316,12 +319,12 @@ public:
   void set_on_connected(DeviceCallback) override {}
   void set_on_disconnected(DeviceCallback) override {}
 
-private:
+ private:
   void capture_loop() {
     while (running_) {
       DWORD stream_index, flags;
       LONGLONG timestamp;
-      IMFSample *sample = nullptr;
+      IMFSample* sample = nullptr;
 
       HRESULT hr = source_reader_->ReadSample(
           MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0, &stream_index, &flags,
@@ -332,14 +335,14 @@ private:
         continue;
       }
 
-      IMFMediaBuffer *buffer = nullptr;
+      IMFMediaBuffer* buffer = nullptr;
       hr = sample->ConvertToContiguousBuffer(&buffer);
       if (FAILED(hr)) {
         SafeRelease(&sample);
         continue;
       }
 
-      BYTE *data = nullptr;
+      BYTE* data = nullptr;
       DWORD length = 0;
       hr = buffer->Lock(&data, nullptr, &length);
       if (FAILED(hr)) {
@@ -389,9 +392,9 @@ private:
   }
 
   DeviceInfo info_;
-  IMFActivate *activate_ = nullptr;
-  IMFMediaSource *media_source_ = nullptr;
-  IMFSourceReader *source_reader_ = nullptr;
+  IMFActivate* activate_ = nullptr;
+  IMFMediaSource* media_source_ = nullptr;
+  IMFSourceReader* source_reader_ = nullptr;
   uint32_t width_ = 0;
   uint32_t height_ = 0;
   Format format_ = Format::NV12;
@@ -410,7 +413,7 @@ std::vector<DeviceInfo> list_devices_impl() {
     return devices;
   }
 
-  IMFAttributes *attributes = nullptr;
+  IMFAttributes* attributes = nullptr;
   HRESULT hr = MFCreateAttributes(&attributes, 1);
   if (FAILED(hr))
     return devices;
@@ -422,7 +425,7 @@ std::vector<DeviceInfo> list_devices_impl() {
     return devices;
   }
 
-  IMFActivate **activates = nullptr;
+  IMFActivate** activates = nullptr;
   UINT32 count = 0;
   hr = MFEnumDeviceSources(attributes, &activates, &count);
   SafeRelease(&attributes);
@@ -430,7 +433,7 @@ std::vector<DeviceInfo> list_devices_impl() {
     return devices;
 
   for (UINT32 i = 0; i < count; i++) {
-    WCHAR *name = nullptr;
+    WCHAR* name = nullptr;
     UINT32 name_length = 0;
     hr = activates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
                                           &name, &name_length);
@@ -448,7 +451,7 @@ std::vector<DeviceInfo> list_devices_impl() {
       CoTaskMemFree(name);
 
       // ユニーク ID を取得
-      WCHAR *symbolic_link = nullptr;
+      WCHAR* symbolic_link = nullptr;
       UINT32 link_length = 0;
       hr = activates[i]->GetAllocatedString(
           MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK,
@@ -482,7 +485,7 @@ std::shared_ptr<Device> open_device_impl(uint32_t index) {
     throw std::runtime_error("Failed to initialize Media Foundation");
   }
 
-  IMFAttributes *attributes = nullptr;
+  IMFAttributes* attributes = nullptr;
   HRESULT hr = MFCreateAttributes(&attributes, 1);
   if (FAILED(hr)) {
     throw std::runtime_error("Failed to create attributes");
@@ -495,7 +498,7 @@ std::shared_ptr<Device> open_device_impl(uint32_t index) {
     throw std::runtime_error("Failed to set source type");
   }
 
-  IMFActivate **activates = nullptr;
+  IMFActivate** activates = nullptr;
   UINT32 count = 0;
   hr = MFEnumDeviceSources(attributes, &activates, &count);
   SafeRelease(&attributes);
@@ -513,7 +516,7 @@ std::shared_ptr<Device> open_device_impl(uint32_t index) {
 
   // デバイス情報を取得
   DeviceInfo info;
-  WCHAR *name = nullptr;
+  WCHAR* name = nullptr;
   UINT32 name_length = 0;
   hr = activates[index]->GetAllocatedString(
       MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &name, &name_length);
@@ -540,8 +543,8 @@ std::shared_ptr<Device> open_device_impl(uint32_t index) {
   return device;
 }
 
-std::shared_ptr<Device> open_device_impl(const DeviceInfo &info) {
+std::shared_ptr<Device> open_device_impl(const DeviceInfo& info) {
   return open_device_impl(info.index);
 }
 
-} // namespace uvc
+}  // namespace uvc

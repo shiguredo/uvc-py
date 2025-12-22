@@ -17,19 +17,21 @@ namespace uvc {
 
 // V4L2 バッファ
 struct V4L2Buffer {
-  void *start;
+  void* start;
   size_t length;
 };
 
 // Linux デバイス実装
 class DeviceLinux : public Device {
-public:
-  DeviceLinux(const DeviceInfo &info, const std::string &device_path)
+ public:
+  DeviceLinux(const DeviceInfo& info, const std::string& device_path)
       : info_(info), device_path_(device_path) {}
 
   ~DeviceLinux() override { stop(); }
 
-  void start(uint32_t width, uint32_t height, uint32_t fps,
+  void start(uint32_t width,
+             uint32_t height,
+             uint32_t fps,
              Format capture_format,
              std::optional<Format> output_format_opt) override {
     if (running_)
@@ -53,16 +55,16 @@ public:
     // V4L2 ピクセルフォーマットを決定
     uint32_t v4l2_pixfmt;
     switch (capture_format) {
-    case Format::NV12:
-      v4l2_pixfmt = V4L2_PIX_FMT_NV12;
-      break;
-    case Format::YUY2:
-      v4l2_pixfmt = V4L2_PIX_FMT_YUYV;
-      break;
-    default:
-      ::close(fd_);
-      fd_ = -1;
-      throw std::runtime_error("Unsupported format. Use NV12 or YUY2.");
+      case Format::NV12:
+        v4l2_pixfmt = V4L2_PIX_FMT_NV12;
+        break;
+      case Format::YUY2:
+        v4l2_pixfmt = V4L2_PIX_FMT_YUYV;
+        break;
+      default:
+        ::close(fd_);
+        fd_ = -1;
+        throw std::runtime_error("Unsupported format. Use NV12 or YUY2.");
     }
 
     // フォーマット設定
@@ -212,7 +214,7 @@ public:
 
   bool is_running() const override { return running_; }
 
-  const DeviceInfo &info() const override { return info_; }
+  const DeviceInfo& info() const override { return info_; }
 
   std::vector<FormatInfo> get_supported_formats() const override {
     std::vector<FormatInfo> formats;
@@ -266,7 +268,7 @@ public:
     on_disconnected_ = std::move(callback);
   }
 
-private:
+ private:
   void capture_loop() {
     std::string device_name = get_device_name();
 
@@ -308,8 +310,8 @@ private:
       }
 
       // フレームを作成
-      const uint8_t *data =
-          static_cast<const uint8_t *>(buffers_[buf.index].start);
+      const uint8_t* data =
+          static_cast<const uint8_t*>(buffers_[buf.index].start);
       size_t size = buf.bytesused;
 
       std::shared_ptr<Frame> frame;
@@ -320,15 +322,15 @@ private:
         size_t y_size = width_ * height_;
         size_t uv_size = width_ * height_ / 2;
         if (size >= y_size + uv_size) {
-          frame->set_nv12_planes(const_cast<uint8_t *>(data), width_,
-                                 const_cast<uint8_t *>(data + y_size), width_);
+          frame->set_nv12_planes(const_cast<uint8_t*>(data), width_,
+                                 const_cast<uint8_t*>(data + y_size), width_);
         }
       } else if (format_ == Format::YUY2) {
         frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
         // YUY2: packed format (width * height * 2 bytes)
         size_t expected_size = width_ * height_ * 2;
         if (size >= expected_size) {
-          frame->set_packed_plane(const_cast<uint8_t *>(data), width_ * 2);
+          frame->set_packed_plane(const_cast<uint8_t*>(data), width_ * 2);
         }
       }
 
@@ -351,16 +353,16 @@ private:
     }
   }
 
-  void process_inotify_events(const std::string &device_name) {
+  void process_inotify_events(const std::string& device_name) {
     char buffer[4096];
     ssize_t len = read(inotify_fd_, buffer, sizeof(buffer));
     if (len <= 0) {
       return;
     }
 
-    char *ptr = buffer;
+    char* ptr = buffer;
     while (ptr < buffer + len) {
-      auto *event = reinterpret_cast<struct inotify_event *>(ptr);
+      auto* event = reinterpret_cast<struct inotify_event*>(ptr);
 
       if (event->len > 0) {
         std::string name(event->name);
@@ -382,7 +384,7 @@ private:
   }
 
   void cleanup_buffers() {
-    for (auto &buffer : buffers_) {
+    for (auto& buffer : buffers_) {
       if (buffer.start && buffer.start != MAP_FAILED) {
         munmap(buffer.start, buffer.length);
       }
@@ -423,11 +425,11 @@ private:
 std::vector<DeviceInfo> list_devices_impl() {
   std::vector<DeviceInfo> devices;
 
-  DIR *dir = opendir("/dev");
+  DIR* dir = opendir("/dev");
   if (!dir)
     return devices;
 
-  struct dirent *entry;
+  struct dirent* entry;
   uint32_t index = 0;
 
   while ((entry = readdir(dir)) != nullptr) {
@@ -443,7 +445,7 @@ std::vector<DeviceInfo> list_devices_impl() {
     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0) {
       if (cap.device_caps & V4L2_CAP_VIDEO_CAPTURE) {
         DeviceInfo info;
-        info.name = reinterpret_cast<const char *>(cap.card);
+        info.name = reinterpret_cast<const char*>(cap.card);
         info.unique_id = path;
         info.index = index++;
         devices.push_back(info);
@@ -467,8 +469,8 @@ std::shared_ptr<Device> open_device_impl(uint32_t index) {
                                        devices[index].unique_id);
 }
 
-std::shared_ptr<Device> open_device_impl(const DeviceInfo &info) {
+std::shared_ptr<Device> open_device_impl(const DeviceInfo& info) {
   return std::make_shared<DeviceLinux>(info, info.unique_id);
 }
 
-} // namespace uvc
+}  // namespace uvc

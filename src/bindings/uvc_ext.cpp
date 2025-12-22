@@ -18,7 +18,7 @@ NB_MODULE(uvc_ext, m) {
       .def_ro("name", &uvc::DeviceInfo::name)
       .def_ro("unique_id", &uvc::DeviceInfo::unique_id)
       .def_ro("index", &uvc::DeviceInfo::index)
-      .def("__repr__", [](const uvc::DeviceInfo &info) {
+      .def("__repr__", [](const uvc::DeviceInfo& info) {
         return "DeviceInfo(name='" + info.name +
                "', index=" + std::to_string(info.index) + ")";
       });
@@ -29,24 +29,24 @@ NB_MODULE(uvc_ext, m) {
       .def_ro("height", &uvc::FormatInfo::height)
       .def_ro("fps", &uvc::FormatInfo::fps)
       .def_ro("format", &uvc::FormatInfo::format)
-      .def("__repr__", [](const uvc::FormatInfo &info) {
+      .def("__repr__", [](const uvc::FormatInfo& info) {
         std::string fmt_str;
         switch (info.format) {
-        case uvc::Format::MJPEG:
-          fmt_str = "MJPEG";
-          break;
-        case uvc::Format::YUY2:
-          fmt_str = "YUY2";
-          break;
-        case uvc::Format::NV12:
-          fmt_str = "NV12";
-          break;
-        case uvc::Format::RGB:
-          fmt_str = "RGB";
-          break;
-        case uvc::Format::RGBA:
-          fmt_str = "RGBA";
-          break;
+          case uvc::Format::MJPEG:
+            fmt_str = "MJPEG";
+            break;
+          case uvc::Format::YUY2:
+            fmt_str = "YUY2";
+            break;
+          case uvc::Format::NV12:
+            fmt_str = "NV12";
+            break;
+          case uvc::Format::RGB:
+            fmt_str = "RGB";
+            break;
+          case uvc::Format::RGBA:
+            fmt_str = "RGBA";
+            break;
         }
         return std::to_string(info.width) + "x" + std::to_string(info.height) +
                "@" + std::to_string(info.fps) + "fps (" + fmt_str + ")";
@@ -128,7 +128,7 @@ NB_MODULE(uvc_ext, m) {
       .def("stop", &uvc::Device::stop, nb::lock_self(), "Stop capturing")
       .def(
           "get_frame",
-          [](uvc::Device &self) {
+          [](uvc::Device& self) {
             std::shared_ptr<uvc::Frame> frame;
             {
               nb::gil_scoped_release release;
@@ -146,7 +146,7 @@ NB_MODULE(uvc_ext, m) {
           "Enter context manager")
       .def(
           "__exit__",
-          [](uvc::Device &self, nb::object, nb::object, nb::object) {
+          [](uvc::Device& self, nb::object, nb::object, nb::object) {
             if (self.is_running()) {
               self.stop();
             }
@@ -193,7 +193,7 @@ NB_MODULE(uvc_ext, m) {
   // open function (by DeviceInfo)
   m.def(
       "open",
-      [](const uvc::DeviceInfo &info, std::optional<nb::object> on_connected,
+      [](const uvc::DeviceInfo& info, std::optional<nb::object> on_connected,
          std::optional<nb::object> on_disconnected)
           -> std::shared_ptr<uvc::Device> {
         auto device = uvc::open_device_impl(info);

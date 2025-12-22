@@ -48,13 +48,13 @@ struct FormatInfo {
 
 // フレームデータ
 class Frame {
-public:
+ public:
   Frame(uint32_t width, uint32_t height, Format format);
   ~Frame();
 
   // コピー禁止
-  Frame(const Frame &) = delete;
-  Frame &operator=(const Frame &) = delete;
+  Frame(const Frame&) = delete;
+  Frame& operator=(const Frame&) = delete;
 
   uint32_t width() const { return width_; }
   uint32_t height() const { return height_; }
@@ -62,8 +62,8 @@ public:
   uint64_t timestamp() const { return timestamp_; }
   void set_timestamp(uint64_t ts) { timestamp_ = ts; }
 
-  uint8_t *data() { return data_.data(); }
-  const uint8_t *data() const { return data_.data(); }
+  uint8_t* data() { return data_.data(); }
+  const uint8_t* data() const { return data_.data(); }
   size_t size() const { return data_.size(); }
 
   // NV12 フォーマット: Y プレーンと UV プレーンを取得
@@ -87,12 +87,14 @@ public:
   nb::object native_buffer() const;
 
   // ゼロコピー用: プラットフォーム固有のバッファを保持
-  void set_native_buffer(void *buffer, void (*release_func)(void *));
-  void set_nv12_planes(uint8_t *y_plane, size_t y_stride, uint8_t *uv_plane,
+  void set_native_buffer(void* buffer, void (*release_func)(void*));
+  void set_nv12_planes(uint8_t* y_plane,
+                       size_t y_stride,
+                       uint8_t* uv_plane,
                        size_t uv_stride);
-  void set_packed_plane(uint8_t *plane, size_t stride);
+  void set_packed_plane(uint8_t* plane, size_t stride);
 
-private:
+ private:
   uint32_t width_;
   uint32_t height_;
   Format format_;
@@ -100,32 +102,34 @@ private:
   std::vector<uint8_t> data_;
 
   // ゼロコピー用
-  void *native_buffer_ = nullptr;
-  void (*native_buffer_release_)(void *) = nullptr;
-  uint8_t *y_plane_ = nullptr;
+  void* native_buffer_ = nullptr;
+  void (*native_buffer_release_)(void*) = nullptr;
+  uint8_t* y_plane_ = nullptr;
   size_t y_stride_ = 0;
-  uint8_t *uv_plane_ = nullptr;
+  uint8_t* uv_plane_ = nullptr;
   size_t uv_stride_ = 0;
-  uint8_t *packed_plane_ = nullptr;
+  uint8_t* packed_plane_ = nullptr;
   size_t packed_stride_ = 0;
 };
 
 // デバイスの抽象クラス
 class Device {
-public:
+ public:
   virtual ~Device() = default;
 
   // capture_format: カメラからのキャプチャフォーマット
   // output_format: 出力フォーマット (省略時は capture_format と同じ、MJPEG
   // の場合は NV12)
-  virtual void start(uint32_t width, uint32_t height, uint32_t fps,
+  virtual void start(uint32_t width,
+                     uint32_t height,
+                     uint32_t fps,
                      Format capture_format = Format::MJPEG,
                      std::optional<Format> output_format = std::nullopt) = 0;
   virtual void stop() = 0;
   virtual std::shared_ptr<Frame> get_frame() = 0;
 
   virtual bool is_running() const = 0;
-  virtual const DeviceInfo &info() const = 0;
+  virtual const DeviceInfo& info() const = 0;
 
   // サポートされているフォーマットを取得
   virtual std::vector<FormatInfo> get_supported_formats() const = 0;
@@ -140,6 +144,6 @@ std::vector<DeviceInfo> list_devices_impl();
 
 // デバイスオープン（プラットフォーム固有実装）
 std::shared_ptr<Device> open_device_impl(uint32_t index);
-std::shared_ptr<Device> open_device_impl(const DeviceInfo &info);
+std::shared_ptr<Device> open_device_impl(const DeviceInfo& info);
 
-} // namespace uvc
+}  // namespace uvc
