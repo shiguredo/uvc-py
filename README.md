@@ -188,7 +188,7 @@ with uvc.open(0) as device:
 [PyCapsule](https://docs.python.org/3/c-api/capsule.html) は Python C API の仕組みで、C/C++ のポインタを Python オブジェクトとして安全に受け渡しできます。
 
 uvc-py では `frame.native_buffer()` で macOS の CVPixelBufferRef を PyCapsule として取得できます。
-これにより numpy 配列への変換を省略し、uvc-py と他の拡張モジュール間でネイティブバッファを直接共有できます。
+これにより他の C 拡張モジュールが CVPixelBufferRef を直接扱えます。
 
 > [!NOTE]
 >
@@ -196,7 +196,7 @@ uvc-py では `frame.native_buffer()` で macOS の CVPixelBufferRef を PyCapsu
 
 ### raw-player との連携
 
-`native_buffer()` を渡すことで numpy 配列の作成を省略できます。
+`native_buffer()` を渡すことで CVPixelBufferRef を直接扱えます。
 
 ```python
 import uvc
@@ -221,7 +221,7 @@ with uvc.open(0) as device:
 
 ### webcodecs-py との連携
 
-`native_buffer()` を渡すことで numpy 配列の作成を省略できます。
+`native_buffer()` を渡すことで CVPixelBufferRef を直接扱えます。
 
 ```python
 import uvc
