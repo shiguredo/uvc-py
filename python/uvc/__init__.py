@@ -3,7 +3,7 @@
 from .uvc_ext import (
     list_devices,
     open,
-    Device,
+    PyDevice as Device,
     DeviceInfo,
     FormatInfo,
     Frame,

@@ -3,20 +3,18 @@
 sync:
 	uv sync
 
-
 wheel: sync
-	uv build --wheel
+	uv run maturin build --release
 
-develop: wheel
-	uv pip install -e . --force-reinstall
-	@cp -f _build/cp*/uvc_ext.pyi src/uvc/ 2>/dev/null || true
+develop: sync
+	uv run maturin develop
 
 test: develop
 	NO_UV_SYNC=1 uv run pytest --timeout=60
 
 format:
-	clang-format -i src/bindings/*.cpp src/bindings/*.h
-	uv run ruff format examples/ src/uvc/ tests/
+	cargo fmt
+	uv run ruff format examples/ python/uvc/ tests/
 
 clean:
-	rm -rf _build dist *.egg-info _deps
+	rm -rf target dist *.egg-info
