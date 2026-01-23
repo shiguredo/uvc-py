@@ -13,15 +13,6 @@ use crate::types::Format;
 /// ネイティブバッファのリリース関数型
 pub type NativeBufferReleaseFn = Box<dyn Fn() + Send + Sync>;
 
-/// Send/Sync 可能なポインタラッパー
-#[derive(Clone, Copy)]
-struct SendPtr(*mut c_void);
-
-// SAFETY: CVPixelBufferRef は参照カウントで管理され、
-// 適切にロック/アンロックされるため安全
-unsafe impl Send for SendPtr {}
-unsafe impl Sync for SendPtr {}
-
 /// フレームの内部データ
 pub struct FrameData {
     pub width: u32,
@@ -282,17 +273,31 @@ impl Frame {
                     crate::platform::macos::cvpixelbuffer_retain(buffer);
                 }
 
-                // SendPtr でラップして Send + Sync にする
-                let send_buffer = SendPtr(buffer);
+                // PyCapsule_New を直接使用してポインタを格納
+                // pyo3 の PyCapsule::new_with_destructor は T を Box に入れてしまうため使用しない
+                let name = c"CVPixelBufferRef";
+                let capsule_ptr = unsafe {
+                    pyo3::ffi::PyCapsule_New(
+                        buffer,
+                        name.as_ptr(),
+                        Some(capsule_destructor),
+                    )
+                };
 
-                let capsule = PyCapsule::new_with_destructor(
-                    py,
-                    send_buffer,
-                    Some(std::ffi::CString::new("CVPixelBufferRef").unwrap()),
-                    |send_ptr, _context| unsafe {
-                        crate::platform::macos::cvpixelbuffer_release(send_ptr.0);
-                    },
-                )?;
+                if capsule_ptr.is_null() {
+                    // capsule 作成失敗時は retain した分を release
+                    unsafe {
+                        crate::platform::macos::cvpixelbuffer_release(buffer);
+                    }
+                    return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                        "Failed to create PyCapsule",
+                    ));
+                }
+
+                // 生のポインタから Bound<PyCapsule> を作成
+                let capsule = unsafe {
+                    Bound::from_owned_ptr(py, capsule_ptr).downcast_into_unchecked::<PyCapsule>()
+                };
                 return Ok(Some(capsule));
             }
         }
@@ -301,5 +306,18 @@ impl Frame {
         let _ = py;
 
         Ok(None)
+    }
+}
+
+/// PyCapsule のデストラクタ
+/// capsule が解放されるときに CVPixelBufferRef を release する
+#[cfg(target_os = "macos")]
+unsafe extern "C" fn capsule_destructor(capsule: *mut pyo3::ffi::PyObject) {
+    unsafe {
+        let name = c"CVPixelBufferRef";
+        let buffer = pyo3::ffi::PyCapsule_GetPointer(capsule, name.as_ptr());
+        if !buffer.is_null() {
+            crate::platform::macos::cvpixelbuffer_release(buffer);
+        }
     }
 }
