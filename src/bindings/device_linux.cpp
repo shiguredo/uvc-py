@@ -12,6 +12,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <vector>
 
 namespace uvc {
 
@@ -317,20 +318,45 @@ class DeviceLinux : public Device {
       std::shared_ptr<Frame> frame;
 
       if (format_ == Format::NV12) {
-        frame = std::make_shared<Frame>(width_, height_, Format::NV12);
         // NV12: Y プレーン (width * height) + UV プレーン (width * height / 2)
         size_t y_size = width_ * height_;
         size_t uv_size = width_ * height_ / 2;
-        if (size >= y_size + uv_size) {
-          frame->set_nv12_planes(const_cast<uint8_t*>(data), width_,
-                                 const_cast<uint8_t*>(data + y_size), width_);
+        size_t total_size = y_size + uv_size;
+
+        if (size >= total_size) {
+          frame = std::make_shared<Frame>(width_, height_, Format::NV12);
+
+          // MMAP バッファからデータをコピー
+          auto* buffer = new std::vector<uint8_t>(total_size);
+          std::memcpy(buffer->data(), data, total_size);
+
+          // Frame デストラクタでバッファを解放
+          frame->set_native_buffer(buffer, [](void* p) {
+            delete static_cast<std::vector<uint8_t>*>(p);
+          });
+
+          // コピーしたデータへのポインタを設定
+          frame->set_nv12_planes(buffer->data(), width_,
+                                 buffer->data() + y_size, width_);
         }
       } else if (format_ == Format::YUY2) {
-        frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
         // YUY2: packed format (width * height * 2 bytes)
         size_t expected_size = width_ * height_ * 2;
+
         if (size >= expected_size) {
-          frame->set_packed_plane(const_cast<uint8_t*>(data), width_ * 2);
+          frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
+
+          // MMAP バッファからデータをコピー
+          auto* buffer = new std::vector<uint8_t>(expected_size);
+          std::memcpy(buffer->data(), data, expected_size);
+
+          // Frame デストラクタでバッファを解放
+          frame->set_native_buffer(buffer, [](void* p) {
+            delete static_cast<std::vector<uint8_t>*>(p);
+          });
+
+          // コピーしたデータへのポインタを設定
+          frame->set_packed_plane(buffer->data(), width_ * 2);
         }
       }
 

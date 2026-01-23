@@ -9,9 +9,11 @@ NB_MODULE(uvc_ext, m) {
   nb::enum_<uvc::Format>(m, "Format")
       .value("MJPEG", uvc::Format::MJPEG)
       .value("YUY2", uvc::Format::YUY2)
+      .value("UYVY", uvc::Format::UYVY)
       .value("NV12", uvc::Format::NV12)
       .value("RGB", uvc::Format::RGB)
-      .value("RGBA", uvc::Format::RGBA);
+      .value("RGBA", uvc::Format::RGBA)
+      .value("BGRA", uvc::Format::BGRA);
 
   // DeviceInfo
   nb::class_<uvc::DeviceInfo>(m, "DeviceInfo")
@@ -38,6 +40,9 @@ NB_MODULE(uvc_ext, m) {
           case uvc::Format::YUY2:
             fmt_str = "YUY2";
             break;
+          case uvc::Format::UYVY:
+            fmt_str = "UYVY";
+            break;
           case uvc::Format::NV12:
             fmt_str = "NV12";
             break;
@@ -46,6 +51,9 @@ NB_MODULE(uvc_ext, m) {
             break;
           case uvc::Format::RGBA:
             fmt_str = "RGBA";
+            break;
+          case uvc::Format::BGRA:
+            fmt_str = "BGRA";
             break;
         }
         return std::to_string(info.width) + "x" + std::to_string(info.height) +

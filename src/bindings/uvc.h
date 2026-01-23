@@ -26,9 +26,11 @@ using DeviceCallback = std::function<void()>;
 enum class Format {
   MJPEG,
   YUY2,
+  UYVY,
   NV12,
   RGB,
   RGBA,
+  BGRA,
 };
 
 // デバイス情報

@@ -63,16 +63,26 @@
     // BGRA フォーマット
     frame = std::make_shared<uvc::Frame>(static_cast<uint32_t>(width),
                                          static_cast<uint32_t>(height),
-                                         uvc::Format::RGBA);
+                                         uvc::Format::BGRA);
     frame->set_native_buffer(imageBuffer, release_func);
 
     uint8_t* src = static_cast<uint8_t*>(CVPixelBufferGetBaseAddress(imageBuffer));
     size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
     frame->set_packed_plane(src, bytesPerRow);
 
-  } else if (pixelFormat == kCVPixelFormatType_422YpCbCr8 ||
-             pixelFormat == kCVPixelFormatType_422YpCbCr8_yuvs) {
-    // YUY2 フォーマット
+  } else if (pixelFormat == kCVPixelFormatType_422YpCbCr8) {
+    // UYVY フォーマット (U0 Y0 V0 Y1)
+    frame = std::make_shared<uvc::Frame>(static_cast<uint32_t>(width),
+                                         static_cast<uint32_t>(height),
+                                         uvc::Format::UYVY);
+    frame->set_native_buffer(imageBuffer, release_func);
+
+    uint8_t* src = static_cast<uint8_t*>(CVPixelBufferGetBaseAddress(imageBuffer));
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+    frame->set_packed_plane(src, bytesPerRow);
+
+  } else if (pixelFormat == kCVPixelFormatType_422YpCbCr8_yuvs) {
+    // YUY2 フォーマット (Y0 U0 Y1 V0)
     frame = std::make_shared<uvc::Frame>(static_cast<uint32_t>(width),
                                          static_cast<uint32_t>(height),
                                          uvc::Format::YUY2);
@@ -207,9 +217,11 @@ class DeviceMacOS : public Device {
         switch (capture_format) {
           case Format::MJPEG: fmt_str = "MJPEG (not supported)"; break;
           case Format::YUY2: fmt_str = "YUY2"; break;
+          case Format::UYVY: fmt_str = "UYVY"; break;
           case Format::NV12: fmt_str = "NV12"; break;
           case Format::RGB: fmt_str = "RGB"; break;
           case Format::RGBA: fmt_str = "RGBA"; break;
+          case Format::BGRA: fmt_str = "BGRA"; break;
         }
         throw std::runtime_error("Unsupported format: " +
                                  std::to_string(width) + "x" +
