@@ -277,11 +277,7 @@ impl Frame {
                 // pyo3 の PyCapsule::new_with_destructor は T を Box に入れてしまうため使用しない
                 let name = c"CVPixelBufferRef";
                 let capsule_ptr = unsafe {
-                    pyo3::ffi::PyCapsule_New(
-                        buffer,
-                        name.as_ptr(),
-                        Some(capsule_destructor),
-                    )
+                    pyo3::ffi::PyCapsule_New(buffer, name.as_ptr(), Some(capsule_destructor))
                 };
 
                 if capsule_ptr.is_null() {

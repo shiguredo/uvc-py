@@ -18,7 +18,6 @@ use crate::types::{DeviceInfo, Format, FormatInfo};
 // ioctl コマンド番号
 const VIDIOC_QUERYCAP: libc::c_ulong = 0x80685600;
 const VIDIOC_ENUM_FMT: libc::c_ulong = 0xC0405602;
-const VIDIOC_G_FMT: libc::c_ulong = 0xC0D05604;
 const VIDIOC_S_FMT: libc::c_ulong = 0xC0D05605;
 const VIDIOC_REQBUFS: libc::c_ulong = 0xC0145608;
 const VIDIOC_QUERYBUF: libc::c_ulong = 0xC0445609;
@@ -51,7 +50,6 @@ const V4L2_PIX_FMT_BGR24: u32 = 0x33524742; // 'BGR3'
 
 // フレームサイズタイプ
 const V4L2_FRMSIZE_TYPE_DISCRETE: u32 = 1;
-const V4L2_FRMSIZE_TYPE_STEPWISE: u32 = 3;
 
 // フレームインターバルタイプ
 const V4L2_FRMIVAL_TYPE_DISCRETE: u32 = 1;
@@ -162,12 +160,14 @@ struct V4l2Buffer {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct V4l2FrmsizeDiscrete {
     width: u32,
     height: u32,
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct V4l2FrmsizeStepwise {
     min_width: u32,
     max_width: u32,
@@ -193,18 +193,21 @@ struct V4l2Frmsizeenum {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct V4l2Fract {
     numerator: u32,
     denominator: u32,
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct V4l2FrmivalDiscrete {
     numerator: u32,
     denominator: u32,
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct V4l2FrmivalStepwise {
     min: V4l2Fract,
     max: V4l2Fract,
@@ -235,8 +238,8 @@ struct V4l2Frmivalenum {
 /// ioctl を実行
 unsafe fn v4l2_ioctl(fd: i32, request: libc::c_ulong, arg: *mut libc::c_void) -> i32 {
     loop {
-        let result = libc::ioctl(fd, request, arg);
-        if result == -1 && *libc::__errno_location() == libc::EINTR {
+        let result = unsafe { libc::ioctl(fd, request, arg) };
+        if result == -1 && unsafe { *libc::__errno_location() } == libc::EINTR {
             continue;
         }
         return result;
@@ -557,13 +560,7 @@ impl DeviceLinux {
                     drop(buffers_guard);
 
                     // Frame を作成
-                    let frame = Self::create_frame(
-                        frame_buffer,
-                        width,
-                        height,
-                        format,
-                        timestamp,
-                    );
+                    let frame = Self::create_frame(frame_buffer, width, height, format, timestamp);
 
                     // 最新フレームを更新
                     if let Ok(mut guard) = latest_frame.lock() {
@@ -587,14 +584,15 @@ impl DeviceLinux {
         format: Format,
         timestamp: u64,
     ) -> Frame {
-        let data = Box::new(data);
-        let data_ptr = Box::into_raw(data);
+        let data = Arc::new(data);
+        let data_clone = data.clone();
 
-        let release_fn: NativeBufferReleaseFn = Box::new(move || unsafe {
-            drop(Box::from_raw(data_ptr));
+        let release_fn: NativeBufferReleaseFn = Box::new(move || {
+            // data_clone を所有してドロップ
+            let _ = data_clone.len();
         });
 
-        let data_ref = unsafe { &*data_ptr };
+        let data_ref = &*data;
 
         let mut frame_data = FrameData {
             width,
@@ -617,8 +615,7 @@ impl DeviceLinux {
                 frame_data.y_plane = Some(data_ref.as_ptr() as *mut u8);
                 frame_data.y_stride = width as usize;
                 if data_ref.len() > y_size {
-                    frame_data.uv_plane =
-                        Some(unsafe { data_ref.as_ptr().add(y_size) as *mut u8 });
+                    frame_data.uv_plane = Some(unsafe { data_ref.as_ptr().add(y_size) as *mut u8 });
                     frame_data.uv_stride = width as usize;
                 }
             }
@@ -643,7 +640,7 @@ impl Device for DeviceLinux {
         &mut self,
         width: u32,
         height: u32,
-        fps: u32,
+        _fps: u32,
         capture_format: Format,
         _output_format: Option<Format>,
     ) -> Result<(), UvcError> {

@@ -176,7 +176,7 @@ unsafe extern "C" {
     fn CVPixelBufferGetBaseAddress(pixel_buffer: *mut c_void) -> *mut u8;
     fn CVPixelBufferGetBytesPerRow(pixel_buffer: *mut c_void) -> usize;
     fn CVPixelBufferGetBaseAddressOfPlane(pixel_buffer: *mut c_void, plane_index: usize)
-        -> *mut u8;
+    -> *mut u8;
     fn CVPixelBufferGetBytesPerRowOfPlane(pixel_buffer: *mut c_void, plane_index: usize) -> usize;
     fn CVPixelBufferIsPlanar(pixel_buffer: *mut c_void) -> bool;
 }
@@ -671,8 +671,7 @@ pub fn list_devices() -> Result<Vec<DeviceInfo>, UvcError> {
         let video_media_type = nsstring_from_str("vide");
 
         // ディスカバリセッションを作成
-        let sel =
-            sel_registerName(c"discoverySessionWithDeviceTypes:mediaType:position:".as_ptr());
+        let sel = sel_registerName(c"discoverySessionWithDeviceTypes:mediaType:position:".as_ptr());
         // AVCaptureDevicePositionUnspecified = 0
         let discovery_session = msg_send_obj_obj_i64(
             discovery_class,
