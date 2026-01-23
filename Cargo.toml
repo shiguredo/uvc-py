@@ -2,15 +2,15 @@
 name = "uvc"
 version = "2026.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 
 [lib]
 name = "uvc_ext"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.24", features = ["extension-module"] }
-numpy = "0.24"
+pyo3 = { version = "0.27", features = ["extension-module"] }
+numpy = "0.27"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"

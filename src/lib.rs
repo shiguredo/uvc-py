@@ -43,8 +43,8 @@ fn list_devices() -> PyResult<Vec<DeviceInfo>> {
 fn open(
     py: Python<'_>,
     index_or_info: &Bound<'_, pyo3::types::PyAny>,
-    on_connected: Option<PyObject>,
-    on_disconnected: Option<PyObject>,
+    on_connected: Option<Py<PyAny>>,
+    on_disconnected: Option<Py<PyAny>>,
 ) -> PyResult<PyDevice> {
     // index または DeviceInfo を判定
     let index = if let Ok(idx) = index_or_info.extract::<u32>() {
@@ -55,14 +55,14 @@ fn open(
         return Err(PyTypeError::new_err("index または DeviceInfo が必要です"));
     };
 
-    let device = py.allow_threads(|| platform::open_device(index))?;
+    let device = py.detach(|| platform::open_device(index))?;
     let py_device = PyDevice::new(device);
 
     // コールバックを設定
     if let Some(callback) = on_connected {
         let callback_clone = callback.clone_ref(py);
         py_device.set_on_connected_internal(Some(Box::new(move || {
-            Python::with_gil(|py| {
+            Python::attach(|py| {
                 if let Err(e) = callback_clone.call0(py) {
                     e.print(py);
                 }
@@ -73,7 +73,7 @@ fn open(
     if let Some(callback) = on_disconnected {
         let callback_clone = callback.clone_ref(py);
         py_device.set_on_disconnected_internal(Some(Box::new(move || {
-            Python::with_gil(|py| {
+            Python::attach(|py| {
                 if let Err(e) = callback_clone.call0(py) {
                     e.print(py);
                 }

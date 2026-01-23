@@ -89,7 +89,7 @@ impl Frame {
     }
 
     /// NV12 Y プレーンと UV プレーンを取得
-    fn to_nv12(&self, py: Python<'_>) -> PyResult<(PyObject, PyObject)> {
+    fn to_nv12(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
         if self.data.format != Format::NV12 {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Frame is not NV12 format",
@@ -151,7 +151,7 @@ impl Frame {
     }
 
     /// YUY2 データを取得 (H, W, 2)
-    fn to_yuy2(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn to_yuy2(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         if self.data.format != Format::YUY2 {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Frame is not YUY2 format",
@@ -188,7 +188,7 @@ impl Frame {
     }
 
     /// RGB データを取得 (H, W, 3)
-    fn to_rgb(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn to_rgb(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         if self.data.format != Format::RGB {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Frame is not RGB format",
@@ -225,7 +225,7 @@ impl Frame {
     }
 
     /// RGBA データを取得 (H, W, 4)
-    fn to_rgba(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn to_rgba(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         if self.data.format != Format::RGBA {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Frame is not RGBA format",
@@ -292,7 +292,7 @@ impl Frame {
 
                 // 生のポインタから Bound<PyCapsule> を作成
                 let capsule = unsafe {
-                    Bound::from_owned_ptr(py, capsule_ptr).downcast_into_unchecked::<PyCapsule>()
+                    Bound::from_owned_ptr(py, capsule_ptr).cast_into_unchecked::<PyCapsule>()
                 };
                 return Ok(Some(capsule));
             }

@@ -87,7 +87,7 @@ impl PyDevice {
     fn get_frame(&self, py: Python<'_>) -> Option<Frame> {
         // GIL を解放してフレーム取得
         let inner = self.inner.clone();
-        py.allow_threads(|| {
+        py.detach(|| {
             let device = inner.lock().unwrap();
             device.get_frame()
         })
