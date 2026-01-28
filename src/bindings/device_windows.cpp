@@ -140,10 +140,12 @@ class DeviceWindows : public Device {
       subtype = MFVideoFormat_NV12;
     } else if (capture_format == Format::YUY2) {
       subtype = MFVideoFormat_YUY2;
+    } else if (capture_format == Format::UYVY) {
+      subtype = MFVideoFormat_UYVY;
     } else {
       SafeRelease(&media_type);
       cleanup();
-      throw std::runtime_error("Unsupported format. Use NV12 or YUY2.");
+      throw std::runtime_error("Unsupported format. Use NV12, YUY2, or UYVY.");
     }
 
     hr = media_type->SetGUID(MF_MT_SUBTYPE, subtype);
@@ -194,7 +196,8 @@ class DeviceWindows : public Device {
         // 取得できない場合はフォーマットから計算
         if (capture_format == Format::NV12) {
           stride_ = width_;
-        } else if (capture_format == Format::YUY2) {
+        } else if (capture_format == Format::YUY2 ||
+                   capture_format == Format::UYVY) {
           stride_ = width_ * 2;
         }
       }
@@ -205,7 +208,8 @@ class DeviceWindows : public Device {
       // デフォルトストライド
       if (capture_format == Format::NV12) {
         stride_ = width_;
-      } else if (capture_format == Format::YUY2) {
+      } else if (capture_format == Format::YUY2 ||
+                 capture_format == Format::UYVY) {
         stride_ = width_ * 2;
       }
     }
@@ -295,12 +299,14 @@ class DeviceWindows : public Device {
           continue;
         }
 
-        // NV12 と YUY2 のみ (MJPEG は非対応)
+        // NV12, YUY2, UYVY のみ (MJPEG は非対応)
         Format fmt;
         if (subtype == MFVideoFormat_NV12) {
           fmt = Format::NV12;
         } else if (subtype == MFVideoFormat_YUY2) {
           fmt = Format::YUY2;
+        } else if (subtype == MFVideoFormat_UYVY) {
+          fmt = Format::UYVY;
         } else {
           SafeRelease(&type);
           continue;
@@ -406,6 +412,24 @@ class DeviceWindows : public Device {
 
         if (length >= expected_size) {
           frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
+
+          // バッファをコピーして use-after-free を防ぐ
+          auto* buffer_copy = new std::vector<uint8_t>(length);
+          std::memcpy(buffer_copy->data(), data, length);
+
+          // Frame デストラクタでバッファを解放
+          frame->set_native_buffer(buffer_copy, [](void* p) {
+            delete static_cast<std::vector<uint8_t>*>(p);
+          });
+
+          // コピーしたデータへのポインタを設定
+          frame->set_packed_plane(buffer_copy->data(), stride_);
+        }
+      } else if (format_ == Format::UYVY) {
+        size_t expected_size = stride_ * height_;
+
+        if (length >= expected_size) {
+          frame = std::make_shared<Frame>(width_, height_, Format::UYVY);
 
           // バッファをコピーして use-after-free を防ぐ
           auto* buffer_copy = new std::vector<uint8_t>(length);

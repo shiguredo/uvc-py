@@ -77,6 +77,9 @@ class Frame {
   // YUY2 フォーマット: (H, W, 2)
   nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>> to_yuy2() const;
 
+  // UYVY フォーマット: (H, W, 2)
+  nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>> to_uyvy() const;
+
   // RGB フォーマット: (H, W, 3)
   nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>> to_rgb() const;
 

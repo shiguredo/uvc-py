@@ -10,9 +10,9 @@ Frame::Frame(uint32_t width, uint32_t height, Format format)
     : width_(width), height_(height), format_(format) {
   // ゼロコピーモードの場合は data_ を確保しない
   // NV12: set_nv12_planes() で直接ポインタをセット
-  // YUY2/RGBA: set_packed_plane() で直接ポインタをセット
+  // YUY2/UYVY/RGBA: set_packed_plane() で直接ポインタをセット
   if (format == Format::NV12 || format == Format::YUY2 ||
-      format == Format::RGBA) {
+      format == Format::UYVY || format == Format::RGBA) {
     return;
   }
 
@@ -88,6 +88,21 @@ Frame::to_nv12() const {
 nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>> Frame::to_yuy2() const {
   if (format_ != Format::YUY2) {
     throw std::runtime_error("Frame is not YUY2 format");
+  }
+
+  if (!packed_plane_) {
+    throw std::runtime_error("Packed plane not set");
+  }
+
+  size_t shape[3] = {height_, width_, 2};
+  int64_t strides[3] = {static_cast<int64_t>(packed_stride_), 2, 1};
+  return nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>>(
+      packed_plane_, 3, shape, nb::handle(), strides);
+}
+
+nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>> Frame::to_uyvy() const {
+  if (format_ != Format::UYVY) {
+    throw std::runtime_error("Frame is not UYVY format");
   }
 
   if (!packed_plane_) {

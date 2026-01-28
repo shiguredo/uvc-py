@@ -45,9 +45,7 @@
     CVPixelBufferRelease(pb);
   };
 
-  // サポートするフォーマット: NV12, YUY2
-  // BGRA/UYVY はカメラがネイティブで出力しないためサポートしない
-  // 対応カメラが出てきたら追加する
+  // サポートするフォーマット: NV12, YUY2, UYVY
   if (pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
       pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
     // NV12 フォーマット
@@ -67,6 +65,17 @@
     frame = std::make_shared<uvc::Frame>(static_cast<uint32_t>(width),
                                          static_cast<uint32_t>(height),
                                          uvc::Format::YUY2);
+    frame->set_native_buffer(imageBuffer, release_func);
+
+    uint8_t* src = static_cast<uint8_t*>(CVPixelBufferGetBaseAddress(imageBuffer));
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+    frame->set_packed_plane(src, bytesPerRow);
+
+  } else if (pixelFormat == kCVPixelFormatType_422YpCbCr8) {
+    // UYVY フォーマット (U0 Y0 V0 Y1)
+    frame = std::make_shared<uvc::Frame>(static_cast<uint32_t>(width),
+                                         static_cast<uint32_t>(height),
+                                         uvc::Format::UYVY);
     frame->set_native_buffer(imageBuffer, release_func);
 
     uint8_t* src = static_cast<uint8_t*>(CVPixelBufferGetBaseAddress(imageBuffer));
@@ -161,8 +170,9 @@ class DeviceMacOS : public Device {
             formatMatch = (mediaSubType == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
                           mediaSubType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange);
           } else if (capture_format == Format::YUY2) {
-            formatMatch = (mediaSubType == kCVPixelFormatType_422YpCbCr8_yuvs ||
-                          mediaSubType == kCVPixelFormatType_422YpCbCr8);
+            formatMatch = (mediaSubType == kCVPixelFormatType_422YpCbCr8_yuvs);
+          } else if (capture_format == Format::UYVY) {
+            formatMatch = (mediaSubType == kCVPixelFormatType_422YpCbCr8);
           } else if (capture_format == Format::RGBA) {
             formatMatch = (mediaSubType == kCVPixelFormatType_32BGRA ||
                           mediaSubType == kCVPixelFormatType_32ARGB);
@@ -242,6 +252,8 @@ class DeviceMacOS : public Device {
         outputPixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
       } else if (capture_format == Format::YUY2) {
         outputPixelFormat = kCVPixelFormatType_422YpCbCr8_yuvs;
+      } else if (capture_format == Format::UYVY) {
+        outputPixelFormat = kCVPixelFormatType_422YpCbCr8;
       } else {
         outputPixelFormat = kCVPixelFormatType_32BGRA;
       }
@@ -340,20 +352,21 @@ class DeviceMacOS : public Device {
         CMFormatDescriptionRef desc = format.formatDescription;
         FourCharCode mediaSubType = CMFormatDescriptionGetMediaSubType(desc);
 
-        // サポートするフォーマット: NV12, YUY2
-        // BGRA/UYVY/RGBA/RGB はカメラがネイティブで出力しないためサポートしない
-        // 対応カメラが出てきたら追加する
+        // サポートするフォーマット: NV12, YUY2, UYVY
         Format fmt;
         switch (mediaSubType) {
           case kCVPixelFormatType_422YpCbCr8_yuvs:  // 'yuvs' / YUY2
             fmt = Format::YUY2;
+            break;
+          case kCVPixelFormatType_422YpCbCr8:  // '2vuy' / UYVY
+            fmt = Format::UYVY;
             break;
           case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:  // '420v' / NV12
           case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:   // '420f'
             fmt = Format::NV12;
             break;
           default:
-            // MJPEG, UYVY, BGRA, RGB などの未対応フォーマットはスキップ
+            // MJPEG, BGRA, RGB などの未対応フォーマットはスキップ
             continue;
         }
 

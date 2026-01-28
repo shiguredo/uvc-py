@@ -101,6 +101,19 @@ NB_MODULE(uvc_ext, m) {
           },
           "Get YUY2 data as (H, W, 2) array")
       .def(
+          "to_uyvy",
+          [](std::shared_ptr<uvc::Frame> self) {
+            auto result = self->to_uyvy();
+            size_t shape[3] = {static_cast<size_t>(result.shape(0)),
+                               static_cast<size_t>(result.shape(1)),
+                               static_cast<size_t>(result.shape(2))};
+            int64_t strides[3] = {result.stride(0), result.stride(1),
+                                  result.stride(2)};
+            return nb::ndarray<nb::numpy, uint8_t, nb::shape<-1, -1, -1>>(
+                result.data(), 3, shape, nb::cast(self), strides);
+          },
+          "Get UYVY data as (H, W, 2) array")
+      .def(
           "to_rgb",
           [](std::shared_ptr<uvc::Frame> self) {
             auto result = self->to_rgb();

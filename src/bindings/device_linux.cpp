@@ -62,10 +62,14 @@ class DeviceLinux : public Device {
       case Format::YUY2:
         v4l2_pixfmt = V4L2_PIX_FMT_YUYV;
         break;
+      case Format::UYVY:
+        v4l2_pixfmt = V4L2_PIX_FMT_UYVY;
+        break;
       default:
         ::close(fd_);
         fd_ = -1;
-        throw std::runtime_error("Unsupported format. Use NV12 or YUY2.");
+        throw std::runtime_error(
+            "Unsupported format. Use NV12, YUY2, or UYVY.");
     }
 
     // フォーマット設定
@@ -227,10 +231,11 @@ class DeviceLinux : public Device {
 
     // 各ピクセルフォーマットを列挙
     // MJPEG は非対応のためリストから除外
-    uint32_t pix_formats[] = {V4L2_PIX_FMT_NV12, V4L2_PIX_FMT_YUYV};
-    Format fmt_types[] = {Format::NV12, Format::YUY2};
+    uint32_t pix_formats[] = {V4L2_PIX_FMT_NV12, V4L2_PIX_FMT_YUYV,
+                              V4L2_PIX_FMT_UYVY};
+    Format fmt_types[] = {Format::NV12, Format::YUY2, Format::UYVY};
 
-    for (size_t i = 0; i < 2; i++) {
+    for (size_t i = 0; i < 3; i++) {
       struct v4l2_frmsizeenum frmsize = {};
       frmsize.pixel_format = pix_formats[i];
 
@@ -346,6 +351,25 @@ class DeviceLinux : public Device {
 
         if (size >= expected_size) {
           frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
+
+          // MMAP バッファからデータをコピー
+          auto* buffer = new std::vector<uint8_t>(expected_size);
+          std::memcpy(buffer->data(), data, expected_size);
+
+          // Frame デストラクタでバッファを解放
+          frame->set_native_buffer(buffer, [](void* p) {
+            delete static_cast<std::vector<uint8_t>*>(p);
+          });
+
+          // コピーしたデータへのポインタを設定
+          frame->set_packed_plane(buffer->data(), stride_);
+        }
+      } else if (format_ == Format::UYVY) {
+        // UYVY: packed format (stride * height bytes)
+        size_t expected_size = stride_ * height_;
+
+        if (size >= expected_size) {
+          frame = std::make_shared<Frame>(width_, height_, Format::UYVY);
 
           // MMAP バッファからデータをコピー
           auto* buffer = new std::vector<uint8_t>(expected_size);
