@@ -131,7 +131,7 @@ NB_MODULE(uvc_ext, m) {
   // Device
   nb::class_<uvc::Device>(m, "Device")
       .def("start", &uvc::Device::start, "width"_a, "height"_a, "fps"_a,
-           "capture_format"_a = uvc::Format::MJPEG,
+           "capture_format"_a = uvc::Format::NV12,
            "output_format"_a = nb::none(), nb::lock_self(), "Start capturing")
       .def("stop", &uvc::Device::stop, nb::lock_self(), "Stop capturing")
       .def(

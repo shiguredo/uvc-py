@@ -84,6 +84,7 @@ class DeviceLinux : public Device {
 
     width_ = fmt.fmt.pix.width;
     height_ = fmt.fmt.pix.height;
+    stride_ = fmt.fmt.pix.bytesperline;
     format_ = capture_format;
 
     // フレームレート設定
@@ -318,9 +319,9 @@ class DeviceLinux : public Device {
       std::shared_ptr<Frame> frame;
 
       if (format_ == Format::NV12) {
-        // NV12: Y プレーン (width * height) + UV プレーン (width * height / 2)
-        size_t y_size = width_ * height_;
-        size_t uv_size = width_ * height_ / 2;
+        // NV12: Y プレーン (stride * height) + UV プレーン (stride * height / 2)
+        size_t y_size = stride_ * height_;
+        size_t uv_size = stride_ * height_ / 2;
         size_t total_size = y_size + uv_size;
 
         if (size >= total_size) {
@@ -336,12 +337,12 @@ class DeviceLinux : public Device {
           });
 
           // コピーしたデータへのポインタを設定
-          frame->set_nv12_planes(buffer->data(), width_,
-                                 buffer->data() + y_size, width_);
+          frame->set_nv12_planes(buffer->data(), stride_,
+                                 buffer->data() + y_size, stride_);
         }
       } else if (format_ == Format::YUY2) {
-        // YUY2: packed format (width * height * 2 bytes)
-        size_t expected_size = width_ * height_ * 2;
+        // YUY2: packed format (stride * height bytes)
+        size_t expected_size = stride_ * height_;
 
         if (size >= expected_size) {
           frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
@@ -356,7 +357,7 @@ class DeviceLinux : public Device {
           });
 
           // コピーしたデータへのポインタを設定
-          frame->set_packed_plane(buffer->data(), width_ * 2);
+          frame->set_packed_plane(buffer->data(), stride_);
         }
       }
 
@@ -433,6 +434,7 @@ class DeviceLinux : public Device {
   int fd_ = -1;
   uint32_t width_ = 0;
   uint32_t height_ = 0;
+  uint32_t stride_ = 0;
   Format format_ = Format::NV12;
   std::vector<V4L2Buffer> buffers_;
   std::queue<std::shared_ptr<Frame>> frame_queue_;

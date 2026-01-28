@@ -120,12 +120,11 @@ class Device {
   virtual ~Device() = default;
 
   // capture_format: カメラからのキャプチャフォーマット
-  // output_format: 出力フォーマット (省略時は capture_format と同じ、MJPEG
-  // の場合は NV12)
+  // output_format: 出力フォーマット (省略時は capture_format と同じ)
   virtual void start(uint32_t width,
                      uint32_t height,
                      uint32_t fps,
-                     Format capture_format = Format::MJPEG,
+                     Format capture_format = Format::NV12,
                      std::optional<Format> output_format = std::nullopt) = 0;
   virtual void stop() = 0;
   virtual std::shared_ptr<Frame> get_frame() = 0;

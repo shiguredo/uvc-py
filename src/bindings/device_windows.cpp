@@ -39,6 +39,9 @@ class MFInitializer {
  private:
   MFInitializer() {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    // RPC_E_CHANGED_MODE の場合は他のスレッドが COM を初期化済み
+    // この場合は CoUninitialize() を呼ばない
+    com_initialized_ = SUCCEEDED(hr);
     if (SUCCEEDED(hr) || hr == RPC_E_CHANGED_MODE) {
       hr = MFStartup(MF_VERSION);
       if (SUCCEEDED(hr)) {
@@ -51,10 +54,13 @@ class MFInitializer {
     if (initialized_) {
       MFShutdown();
     }
-    CoUninitialize();
+    if (com_initialized_) {
+      CoUninitialize();
+    }
   }
 
   bool initialized_ = false;
+  bool com_initialized_ = false;
 };
 
 // Windows デバイス実装
@@ -178,10 +184,30 @@ class DeviceWindows : public Device {
       MFGetAttributeSize(current_type, MF_MT_FRAME_SIZE, &w, &h);
       width_ = w;
       height_ = h;
+
+      // ストライドを取得
+      UINT32 default_stride = 0;
+      hr = current_type->GetUINT32(MF_MT_DEFAULT_STRIDE, &default_stride);
+      if (SUCCEEDED(hr)) {
+        stride_ = default_stride;
+      } else {
+        // 取得できない場合はフォーマットから計算
+        if (capture_format == Format::NV12) {
+          stride_ = width_;
+        } else if (capture_format == Format::YUY2) {
+          stride_ = width_ * 2;
+        }
+      }
       SafeRelease(&current_type);
     } else {
       width_ = width;
       height_ = height;
+      // デフォルトストライド
+      if (capture_format == Format::NV12) {
+        stride_ = width_;
+      } else if (capture_format == Format::YUY2) {
+        stride_ = width_ * 2;
+      }
     }
 
     format_ = capture_format;
@@ -355,17 +381,48 @@ class DeviceWindows : public Device {
       std::shared_ptr<Frame> frame;
 
       if (format_ == Format::NV12) {
-        frame = std::make_shared<Frame>(width_, height_, Format::NV12);
-        size_t y_size = width_ * height_;
-        if (length >= y_size + y_size / 2) {
-          frame->set_nv12_planes(data, width_, data + y_size, width_);
+        size_t y_size = stride_ * height_;
+        size_t uv_size = stride_ * height_ / 2;
+        size_t total_size = y_size + uv_size;
+
+        if (length >= total_size) {
+          frame = std::make_shared<Frame>(width_, height_, Format::NV12);
+
+          // バッファをコピーして use-after-free を防ぐ
+          auto* buffer_copy = new std::vector<uint8_t>(length);
+          std::memcpy(buffer_copy->data(), data, length);
+
+          // Frame デストラクタでバッファを解放
+          frame->set_native_buffer(buffer_copy, [](void* p) {
+            delete static_cast<std::vector<uint8_t>*>(p);
+          });
+
+          // コピーしたデータへのポインタを設定
+          frame->set_nv12_planes(buffer_copy->data(), stride_,
+                                 buffer_copy->data() + y_size, stride_);
         }
       } else if (format_ == Format::YUY2) {
-        frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
-        if (length >= width_ * height_ * 2) {
-          frame->set_packed_plane(data, width_ * 2);
+        size_t expected_size = stride_ * height_;
+
+        if (length >= expected_size) {
+          frame = std::make_shared<Frame>(width_, height_, Format::YUY2);
+
+          // バッファをコピーして use-after-free を防ぐ
+          auto* buffer_copy = new std::vector<uint8_t>(length);
+          std::memcpy(buffer_copy->data(), data, length);
+
+          // Frame デストラクタでバッファを解放
+          frame->set_native_buffer(buffer_copy, [](void* p) {
+            delete static_cast<std::vector<uint8_t>*>(p);
+          });
+
+          // コピーしたデータへのポインタを設定
+          frame->set_packed_plane(buffer_copy->data(), stride_);
         }
       }
+
+      buffer->Unlock();
+      SafeRelease(&buffer);
 
       if (frame) {
         // タイムスタンプを設定 (100ns 単位 → マイクロ秒)
@@ -375,8 +432,6 @@ class DeviceWindows : public Device {
         latest_frame_ = frame;
       }
 
-      buffer->Unlock();
-      SafeRelease(&buffer);
       SafeRelease(&sample);
     }
   }
@@ -397,6 +452,7 @@ class DeviceWindows : public Device {
   IMFSourceReader* source_reader_ = nullptr;
   uint32_t width_ = 0;
   uint32_t height_ = 0;
+  uint32_t stride_ = 0;
   Format format_ = Format::NV12;
   std::shared_ptr<Frame> latest_frame_;
   std::mutex frame_mutex_;

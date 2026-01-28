@@ -28,12 +28,12 @@ UVC (USB Video Class) カメラからの映像キャプチャを行う Python �
 
 - NV12
 - YUY2
-- UYVY
-- BGRA
 
 ### 将来サポート予定
 
 - MJPEG
+- UYVY
+- BGRA
 
 ## 対応プラットフォーム
 
@@ -360,11 +360,11 @@ with uvc.open(0) as device:
 |-----|------|
 | `NV12` | NV12(Y + UV インターリーブ) |
 | `YUY2` | YUY2(Y0 U0 Y1 V0) |
-| `UYVY` | UYVY(U0 Y0 V0 Y1) |
-| `RGB` | RGB |
-| `RGBA` | RGBA |
-| `BGRA` | BGRA |
-| `MJPEG` | Motion JPEG(将来サポート予定) |
+| `UYVY` | UYVY(U0 Y0 V0 Y1)※将来サポート予定 |
+| `RGB` | RGB ※将来サポート予定 |
+| `RGBA` | RGBA ※将来サポート予定 |
+| `BGRA` | BGRA ※将来サポート予定 |
+| `MJPEG` | Motion JPEG ※将来サポート予定 |
 
 ## ビルド
 
